@@ -1,0 +1,22 @@
+{
+  "name": "ixo-assistant-react-native-example",
+  "displayName": "IxoAssistantReactNative Example",
+  "expo": {
+    "name": "ixo-assistant-react-native-example",
+    "slug": "ixo-assistant-react-native-example",
+    "description": "Example app for ixo-assistant-react-native",
+    "privacy": "public",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
