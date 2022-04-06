@@ -35,12 +35,7 @@ export function useBot({
   const pushMsgToHistory = useCallback((msg: any) => {
     setMsgHistory((lastMsgHistory: any) => [...lastMsgHistory, msg]);
   }, []);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const memoizedCallback = useCallback(() => {
-    console.log('test');
-  }, []);
-
+  
   const removeMsgFromHistory = useCallback(
     (msgIdx: number) => {
       setMsgHistory((lastMsgHistory: string | any[]) => [
@@ -51,7 +46,7 @@ export function useBot({
     [setMsgHistory]
   );
 
-  const restartSession = useCallback((sock: any, session_id: any) => {
+  const restartSession = useCallback((session_id: any) => {
     sockRef.current.emit('session_request', { session_id });
   }, []);
 
