@@ -11,11 +11,11 @@ npm install ixo-assistant-react-native
 ## Usage
 
 ```js
-import { multiply } from "ixo-assistant-react-native";
+import { useBot } from 'ixo-assistant-react-native';
 
 // ...
 
-const result = await multiply(3, 7);
+
 ```
 
 ## Contributing

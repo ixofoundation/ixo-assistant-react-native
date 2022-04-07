@@ -1,6 +1,5 @@
-const io = require('socket.io-client');
-const { useState, useEffect, useCallback, useRef } = require('react');
-
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 // module.exports = (
 //   sockUrl: string,
 //   sockOpts: any,
@@ -10,12 +9,12 @@ const { useState, useEffect, useCallback, useRef } = require('react');
 //   onUtter = noop
 // ) => {
 type sockUrl = {
-  sockUrl: any;
-  sockOpts: any;
-  initSessionId: number;
-  initMsg: any;
-  onError: any;
-  onUtter: any;
+  sockUrl?: any;
+  sockOpts?: any;
+  initSessionId?: number;
+  initMsg?: any;
+  onError?: any;
+  onUtter?: any;
 };
 
 export function useBot({
@@ -26,16 +25,16 @@ export function useBot({
   onError,
   onUtter,
 }: sockUrl) {
-  const sockRef = useRef(null);
+  const sockRef = useRef<Socket>(null);
   const sessionIdRef = useRef(null);
   const inputRef = useRef({ focus: noop, blur: noop });
   const [userText, setUserText] = useState('');
-  const [msgHistory, setMsgHistory] = useState([]);
+  const [msgHistory, setMsgHistory] = useState<any>([]);
 
   const pushMsgToHistory = useCallback((msg: any) => {
     setMsgHistory((lastMsgHistory: any) => [...lastMsgHistory, msg]);
   }, []);
-  
+
   const removeMsgFromHistory = useCallback(
     (msgIdx: number) => {
       setMsgHistory((lastMsgHistory: string | any[]) => [
@@ -46,12 +45,15 @@ export function useBot({
     [setMsgHistory]
   );
 
-  const restartSession = useCallback((session_id: any) => {
-    sockRef.current.emit('session_request', { session_id });
-  }, []);
+  const restartSession = useCallback(
+    (session_id?: any, _initSessionId?: any) => {
+      sockRef.current.emit('session_request', { session_id });
+    },
+    []
+  );
 
   const userUtter = useCallback(
-    (text: any, payload: any) => {
+    (text: any, payload?: any) => {
       sockRef.current.emit('user_uttered', {
         session_id: sessionIdRef.current,
         message: payload || text,
@@ -72,7 +74,7 @@ export function useBot({
   }, [userText, userUtter]);
 
   const selectOption = useCallback(
-    (msgIdx: string | number, optIdx: string | number) => {
+    (msgIdx: number, optIdx: string | number) => {
       const msg = msgHistory[msgIdx],
         opt = (msg.buttons || msg.quick_replies)[optIdx];
 
