@@ -25,7 +25,7 @@ export function useBot({
   onError,
   onUtter,
 }: sockUrl) {
-  const sockRef = useRef<Socket>(null);
+  const sockRef = useRef<Socket | null>(null);
   const sessionIdRef = useRef(null);
   const inputRef = useRef({ focus: noop, blur: noop });
   const [userText, setUserText] = useState('');
@@ -47,22 +47,26 @@ export function useBot({
 
   const restartSession = useCallback(
     (session_id?: any, _initSessionId?: any) => {
-      sockRef.current.emit('session_request', { session_id });
+      if (sockRef.current !== null) {
+        sockRef.current.emit('session_request', { session_id });
+      }
     },
     []
   );
 
   const userUtter = useCallback(
     (text: any, payload?: any) => {
-      sockRef.current.emit('user_uttered', {
-        session_id: sessionIdRef.current,
-        message: payload || text,
-      });
+      if (sockRef.current !== null) {
+        sockRef.current.emit('user_uttered', {
+          session_id: sessionIdRef.current,
+          message: payload || text,
+        });
 
-      const msg = { ts: Date.now(), direction: 'out', text };
+        const msg = { ts: Date.now(), direction: 'out', text };
 
-      onUtter(msg);
-      pushMsgToHistory(msg);
+        onUtter(msg);
+        pushMsgToHistory(msg);
+      }
     },
     [onUtter, pushMsgToHistory]
     // [sockRef.current, sessionIdRef.current]
@@ -118,42 +122,41 @@ export function useBot({
   );
 
   useEffect(() => {
-    const [, sockHostname, sockPath] = sockUrl.match(
-        /^((?:http|ws)s?:\/\/[^/]+)(\/.*)$/
-      ),
-      sock = io(sockHostname, { path: sockPath, ...sockOpts });
+    // const [, sockHostname, sockPath] = sockUrl.match(/^((?:http|ws)s?:\/\/[^/]+)(\/.*)$/)
 
+    const sock = io(sockUrl);
     sockRef.current = sock;
+
+    sock.on('connect', () => {
+      console.log('connected');
+      restartSession(sock, initSessionId);
+    });
 
     socketErrorEventNames.forEach((errorEventName) =>
       sock.on(errorEventName, (e: string) => {
         if (errorEventName === 'disconnect' && e === 'io client disconnect')
           // this is fired on manual disconnects so not an error
           return;
-
         onError({ type: errorEventName, payload: e });
       })
     );
 
-    sock
-      .on('connect', () => restartSession(sock, initSessionId))
+    sock.on('session_confirm', (sessInfo: { session_id: any }) => {
+      sessionIdRef.current = sessInfo.session_id;
+      setMsgHistory([]);
+      inputRef.current.focus();
 
-      .on('session_confirm', (sessInfo: { session_id: any }) => {
-        sessionIdRef.current = sessInfo.session_id;
+      if (initMsg)
+        if (typeof initMsg === 'object')
+          userUtter(initMsg.title, initMsg.payload);
+        else userUtter(initMsg);
+    });
 
-        setMsgHistory([]);
+    sock.on('bot_uttered', handleBotUtter);
 
-        inputRef.current.focus();
-
-        if (initMsg)
-          if (typeof initMsg === 'object')
-            userUtter(initMsg.title, initMsg.payload);
-          else userUtter(initMsg);
-      })
-
-      .on('bot_uttered', handleBotUtter);
-
-    return () => sock.close();
+    return () => {
+      sock.close();
+    };
   }, [
     handleBotUtter,
     initMsg,
@@ -189,7 +192,3 @@ const socketErrorEventNames = [
   'reconnect_failed',
   'disconnect',
 ];
-
-export function multiply(a: number, b: number): Promise<number> {
-  return Promise.resolve(a * b);
-}
