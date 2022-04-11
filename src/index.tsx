@@ -29,6 +29,7 @@ export function useBot({
   const sessionIdRef = useRef(null);
   const inputRef = useRef({ focus: noop, blur: noop });
   const [userText, setUserText] = useState('');
+  const [sessionID, setSessionId] = useState('');
   const [msgHistory, setMsgHistory] = useState<any>([]);
 
   const pushMsgToHistory = useCallback((msg: any) => {
@@ -45,20 +46,11 @@ export function useBot({
     [setMsgHistory]
   );
 
-  const restartSession = useCallback(
-    (session_id?: any, _initSessionId?: any) => {
-      if (sockRef.current !== null) {
-        sockRef.current.emit('session_request', { session_id });
-      }
-    },
-    []
-  );
-
   const userUtter = useCallback(
     (text: any, payload?: any) => {
       if (sockRef.current !== null) {
         sockRef.current.emit('user_uttered', {
-          session_id: sessionIdRef.current,
+          session_id: sessionID,
           message: payload || text,
         });
 
@@ -68,14 +60,17 @@ export function useBot({
         pushMsgToHistory(msg);
       }
     },
-    [onUtter, pushMsgToHistory]
+    [onUtter, pushMsgToHistory, sessionID]
     // [sockRef.current, sessionIdRef.current]
   );
 
-  const sendUserText = useCallback(() => {
-    userUtter(userText);
-    setUserText('');
-  }, [userText, userUtter]);
+  const sendUserText = useCallback(
+    (msg) => {
+      userUtter(msg);
+      setUserText('');
+    },
+    [userUtter]
+  );
 
   const selectOption = useCallback(
     (msgIdx: number, optIdx: string | number) => {
@@ -128,8 +123,12 @@ export function useBot({
     sockRef.current = sock;
 
     sock.on('connect', () => {
-      console.log('connected');
-      restartSession(sock, initSessionId);
+      console.log('connected', sock.io.engine.id);
+      if (sessionID !== '') {
+        sock.emit('session_request', { sessionID });
+      } else {
+        setSessionId(sock.io.engine.id);
+      }
     });
 
     socketErrorEventNames.forEach((errorEventName) =>
@@ -157,16 +156,8 @@ export function useBot({
     return () => {
       sock.close();
     };
-  }, [
-    handleBotUtter,
-    initMsg,
-    initSessionId,
-    onError,
-    restartSession,
-    sockOpts,
-    sockUrl,
-    userUtter,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     msgHistory,
@@ -178,7 +169,6 @@ export function useBot({
     sendUserText,
     selectOption,
     botUtter: handleBotUtter,
-    restartSession,
   };
 }
 

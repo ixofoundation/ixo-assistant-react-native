@@ -5,20 +5,41 @@ import { StyleSheet, View, Text } from 'react-native';
 import { useBot } from 'ixo-assistant-react-native';
 
 export default function App() {
-  const test = useBot({
-    sockUrl: 'http://rasa.ixo.earth/api/ws',
+  /*
+
+  const {
+    msgHistory,
+    onInputRef,
+    userText,
+    setUserText,
+    sendUserText,
+    selectOption,
+    botUtter,
+    restartSession,
+  } */
+
+  const { msgHistory, setUserText, sendUserText } = useBot({
+    sockUrl: 'http://rasa.ixo.earth',
     sockOpts: { transports: ['websocket'] },
     initMsg: 'test',
     onError: (e: any) => {
       console.error('assistant error', e);
     },
-    // onUtter: (msg) => msg.action && handleCustomAssistantResponse(msg, botUtter),
+    onUtter: (msg) => console.log(msg),
   });
-  console.log(test.msgHistory);
 
   return (
     <View style={styles.container}>
-      <Text>Time: </Text>
+      {msgHistory.map((msg, index) => {
+        return <Text key={index}>Text: {msg.text}</Text>;
+      })}
+      <Text
+        onPress={() => {
+          sendUserText('bobby');
+        }}
+      >
+        Time:
+      </Text>
     </View>
   );
 }
