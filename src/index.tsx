@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-// module.exports = (
-//   sockUrl: string,
-//   sockOpts: any,
-//   initSessionId: number,
-//   initMsg: string,
-//   onError = noop,
-//   onUtter = noop
-// ) => {
+
 type sockUrl = {
   sockUrl?: any;
   sockOpts?: any;
@@ -17,14 +10,7 @@ type sockUrl = {
   onUtter?: any;
 };
 
-export function useBot({
-  sockUrl,
-  sockOpts,
-  initSessionId,
-  initMsg,
-  onError,
-  onUtter,
-}: sockUrl) {
+export function useBot({ sockUrl, initMsg, onError, onUtter }: sockUrl) {
   const sockRef = useRef<Socket | null>(null);
   const sessionIdRef = useRef(null);
   const inputRef = useRef({ focus: noop, blur: noop });

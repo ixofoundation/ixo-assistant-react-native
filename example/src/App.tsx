@@ -17,7 +17,7 @@ export default function App() {
     botUtter,
     restartSession,
   } */
-
+ 
   const { msgHistory, setUserText, sendUserText } = useBot({
     sockUrl: 'http://rasa.ixo.earth',
     sockOpts: { transports: ['websocket'] },
