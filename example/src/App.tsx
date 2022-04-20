@@ -1,12 +1,11 @@
-/* eslint-disable no-alert */
 import * as React from 'react';
-
 import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'ixo-assistant-react-native';
+// Added ts ignore for strange import issue
+// @ts-ignore
 import { useBot } from 'ixo-assistant-react-native';
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
+  /*
 
   const {
     msgHistory,
@@ -17,23 +16,30 @@ export default function App() {
     selectOption,
     botUtter,
     restartSession,
-  } = useBot({
-    sockUrl: '',
+  } */
+ 
+  const { msgHistory, setUserText, sendUserText } = useBot({
+    sockUrl: 'http://rasa.ixo.earth',
     sockOpts: { transports: ['websocket'] },
-    initMsg,
+    initMsg: 'test',
     onError: (e: any) => {
       console.error('assistant error', e);
     },
-    // onUtter: (msg) => msg.action && handleCustomAssistantResponse(msg, botUtter),
+    onUtter: (msg) => console.log(msg),
   });
-
-  React.useEffect(() => {
-    multiply(3, 7).then(setResult);
-  }, []);
 
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      {msgHistory.map((msg, index) => {
+        return <Text key={index}>Text: {msg.text}</Text>;
+      })}
+      <Text
+        onPress={() => {
+          sendUserText('bobby');
+        }}
+      >
+        Time:
+      </Text>
     </View>
   );
 }

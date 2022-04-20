@@ -1,44 +1,25 @@
-const io = require('socket.io-client');
-const { useState, useEffect, useCallback, useRef } = require('react');
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 
-// module.exports = (
-//   sockUrl: string,
-//   sockOpts: any,
-//   initSessionId: number,
-//   initMsg: string,
-//   onError = noop,
-//   onUtter = noop
-// ) => {
 type sockUrl = {
-  sockUrl: any;
-  sockOpts: any;
-  initSessionId: number;
-  initMsg: any;
-  onError: any;
-  onUtter: any;
+  sockUrl?: any;
+  sockOpts?: any;
+  initSessionId?: number;
+  initMsg?: any;
+  onError?: any;
+  onUtter?: any;
 };
 
-export function useBot({
-  sockUrl,
-  sockOpts,
-  initSessionId,
-  initMsg,
-  onError,
-  onUtter,
-}: sockUrl) {
-  const sockRef = useRef(null);
+export function useBot({ sockUrl, initMsg, onError, onUtter }: sockUrl) {
+  const sockRef = useRef<Socket | null>(null);
   const sessionIdRef = useRef(null);
   const inputRef = useRef({ focus: noop, blur: noop });
   const [userText, setUserText] = useState('');
-  const [msgHistory, setMsgHistory] = useState([]);
+  const [sessionID, setSessionId] = useState('');
+  const [msgHistory, setMsgHistory] = useState<any>([]);
 
   const pushMsgToHistory = useCallback((msg: any) => {
     setMsgHistory((lastMsgHistory: any) => [...lastMsgHistory, msg]);
-  }, []);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const memoizedCallback = useCallback(() => {
-    console.log('test');
   }, []);
 
   const removeMsgFromHistory = useCallback(
@@ -51,33 +32,34 @@ export function useBot({
     [setMsgHistory]
   );
 
-  const restartSession = useCallback((sock: any, session_id: any) => {
-    sockRef.current.emit('session_request', { session_id });
-  }, []);
-
   const userUtter = useCallback(
-    (text: any, payload: any) => {
-      sockRef.current.emit('user_uttered', {
-        session_id: sessionIdRef.current,
-        message: payload || text,
-      });
+    (text: any, payload?: any) => {
+      if (sockRef.current !== null) {
+        sockRef.current.emit('user_uttered', {
+          session_id: sessionID,
+          message: payload || text,
+        });
 
-      const msg = { ts: Date.now(), direction: 'out', text };
+        const msg = { ts: Date.now(), direction: 'out', text };
 
-      onUtter(msg);
-      pushMsgToHistory(msg);
+        onUtter(msg);
+        pushMsgToHistory(msg);
+      }
     },
-    [onUtter, pushMsgToHistory]
+    [onUtter, pushMsgToHistory, sessionID]
     // [sockRef.current, sessionIdRef.current]
   );
 
-  const sendUserText = useCallback(() => {
-    userUtter(userText);
-    setUserText('');
-  }, [userText, userUtter]);
+  const sendUserText = useCallback(
+    (msg) => {
+      userUtter(msg);
+      setUserText('');
+    },
+    [userUtter]
+  );
 
   const selectOption = useCallback(
-    (msgIdx: string | number, optIdx: string | number) => {
+    (msgIdx: number, optIdx: string | number) => {
       const msg = msgHistory[msgIdx],
         opt = (msg.buttons || msg.quick_replies)[optIdx];
 
@@ -121,52 +103,47 @@ export function useBot({
   );
 
   useEffect(() => {
-    const [, sockHostname, sockPath] = sockUrl.match(
-        /^((?:http|ws)s?:\/\/[^/]+)(\/.*)$/
-      ),
-      sock = io(sockHostname, { path: sockPath, ...sockOpts });
+    // const [, sockHostname, sockPath] = sockUrl.match(/^((?:http|ws)s?:\/\/[^/]+)(\/.*)$/)
 
+    const sock = io(sockUrl);
     sockRef.current = sock;
+
+    sock.on('connect', () => {
+      console.log('connected', sock.io.engine.id);
+      if (sessionID !== '') {
+        sock.emit('session_request', { sessionID });
+      } else {
+        setSessionId(sock.io.engine.id);
+      }
+    });
 
     socketErrorEventNames.forEach((errorEventName) =>
       sock.on(errorEventName, (e: string) => {
         if (errorEventName === 'disconnect' && e === 'io client disconnect')
           // this is fired on manual disconnects so not an error
           return;
-
         onError({ type: errorEventName, payload: e });
       })
     );
 
-    sock
-      .on('connect', () => restartSession(sock, initSessionId))
+    sock.on('session_confirm', (sessInfo: { session_id: any }) => {
+      sessionIdRef.current = sessInfo.session_id;
+      setMsgHistory([]);
+      inputRef.current.focus();
 
-      .on('session_confirm', (sessInfo: { session_id: any }) => {
-        sessionIdRef.current = sessInfo.session_id;
+      if (initMsg)
+        if (typeof initMsg === 'object')
+          userUtter(initMsg.title, initMsg.payload);
+        else userUtter(initMsg);
+    });
 
-        setMsgHistory([]);
+    sock.on('bot_uttered', handleBotUtter);
 
-        inputRef.current.focus();
-
-        if (initMsg)
-          if (typeof initMsg === 'object')
-            userUtter(initMsg.title, initMsg.payload);
-          else userUtter(initMsg);
-      })
-
-      .on('bot_uttered', handleBotUtter);
-
-    return () => sock.close();
-  }, [
-    handleBotUtter,
-    initMsg,
-    initSessionId,
-    onError,
-    restartSession,
-    sockOpts,
-    sockUrl,
-    userUtter,
-  ]);
+    return () => {
+      sock.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     msgHistory,
@@ -178,7 +155,6 @@ export function useBot({
     sendUserText,
     selectOption,
     botUtter: handleBotUtter,
-    restartSession,
   };
 }
 
@@ -192,7 +168,3 @@ const socketErrorEventNames = [
   'reconnect_failed',
   'disconnect',
 ];
-
-export function multiply(a: number, b: number): Promise<number> {
-  return Promise.resolve(a * b);
-}
